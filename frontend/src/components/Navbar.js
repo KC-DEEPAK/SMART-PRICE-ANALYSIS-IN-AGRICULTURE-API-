@@ -56,6 +56,11 @@ function Navbar() {
           📍 Market Map
         </NavLink>
 
+        {/* 🔔 PRICE ALERTS */}
+        <NavLink to="/price-alerts" className="nav-link" onClick={closeMenu}>
+          🔔 Price Alerts
+        </NavLink>
+
         {/* 🌐 LANGUAGE TOGGLE */}
         <LanguageToggle />
 

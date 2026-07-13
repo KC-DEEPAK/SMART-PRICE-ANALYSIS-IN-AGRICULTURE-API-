@@ -17,7 +17,9 @@ import FertilizerPage from "./pages/FertilizerPage";
 import DiseaseFertilizerPage from "./pages/DiseaseFertilizerPage";
 import SeasonGuidePage from "./pages/SeasonGuidePage";
 import MapPage from "./pages/MapPage";
+import PriceAlertPage from "./pages/PriceAlertPage";
 import Chatbot from "./components/Chatbot";
+
 
 function App() {
   return (
@@ -37,6 +39,9 @@ function App() {
             <Route path="/season-guide" element={<SeasonGuidePage />} />
             <Route path="/disease-guide" element={<DiseaseFertilizerPage />} />
             <Route path="/map" element={<MapPage />} />
+            {/* 🔔 Price Alerts — email notification feature */}
+            <Route path="/price-alerts" element={<PriceAlertPage />} />
+
           </Routes>
 
           <Chatbot />

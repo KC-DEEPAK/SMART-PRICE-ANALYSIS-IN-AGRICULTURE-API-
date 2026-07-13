@@ -1,0 +1,393 @@
+/* ══════════════════════════════════════════════
+   PriceAlertPage.css  — Price Alert Feature Styles
+   Matches the existing green agricultural brand.
+   ══════════════════════════════════════════════ */
+
+/* ── Hero Header ── */
+.alerts-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.alerts-hero__title {
+  font-size: 1.8rem;
+  color: var(--primary-green, #2e7d32);
+  margin: 0 0 6px;
+}
+
+.alerts-hero__sub {
+  color: #555;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.alerts-check-btn {
+  background: linear-gradient(135deg, #1b5e20, #2e7d32);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 25px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 12px rgba(27, 94, 32, 0.3);
+  white-space: nowrap;
+}
+.alerts-check-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(27, 94, 32, 0.4);
+}
+
+/* ── Status Banners ── */
+.alert-banner {
+  border-radius: 10px;
+  padding: 13px 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  animation: alertFadeIn 0.3s ease;
+}
+.alert-banner--success {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-left: 5px solid #4caf50;
+}
+.alert-banner--error {
+  background: #ffebee;
+  color: #c62828;
+  border-left: 5px solid #ef5350;
+}
+.alert-banner--info {
+  background: #e3f2fd;
+  color: #1565c0;
+  border-left: 5px solid #42a5f5;
+}
+@keyframes alertFadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── User Summary Card ── */
+.alerts-user-card {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: linear-gradient(135deg, #f1f8e9, #e8f5e9);
+  border: 1px solid #c8e6c9;
+  border-radius: 14px;
+  padding: 16px 24px;
+}
+.alerts-user-card__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 140px;
+}
+.alerts-user-card__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #777;
+}
+.alerts-user-card__value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1b5e20;
+  word-break: break-all;
+}
+
+/* ── Main Grid: form left, list right ── */
+.alerts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 800px) {
+  .alerts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Form Panel ── */
+.alerts-form-panel {
+  padding: 28px;
+}
+
+/* ══ AlertForm Internal Styles ══ */
+.alert-form__title {
+  font-size: 1.1rem;
+  color: #1b5e20;
+  margin: 0 0 20px;
+  font-weight: 700;
+}
+.alert-form__group {
+  margin-bottom: 18px;
+}
+.alert-form__label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 6px;
+}
+.alert-form__select,
+.alert-form__input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid #c8e6c9;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  background: #fafff8;
+  color: #333;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+.alert-form__select:focus,
+.alert-form__input:focus {
+  border-color: #4caf50;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
+}
+.alert-form__toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.alert-form__error {
+  color: #c62828;
+  font-size: 0.85rem;
+  margin: -8px 0 12px;
+  background: #ffebee;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+.alert-form__btn {
+  width: 100%;
+  padding: 13px;
+  background: linear-gradient(135deg, #2e7d32, #1b5e20);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 14px rgba(27, 94, 32, 0.3);
+  margin-top: 6px;
+}
+.alert-form__btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(27, 94, 32, 0.4);
+}
+.alert-form__btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ── Toggle Switch ── */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: #ccc;
+  border-radius: 34px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+.toggle-slider::before {
+  content: "";
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+.toggle-switch input:checked + .toggle-slider {
+  background: #4caf50;
+}
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(24px);
+}
+.toggle-status {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.toggle-status.enabled  { color: #2e7d32; }
+.toggle-status.disabled { color: #999; }
+
+/* ── Alerts List Panel ── */
+.alerts-list-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.alerts-list__title {
+  font-size: 1.05rem;
+  color: #1b5e20;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+.alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Skeleton Loader ── */
+.alerts-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.alerts-skeleton__card {
+  height: 130px;
+  background: linear-gradient(90deg, #e8f5e9 25%, #f1f8e9 50%, #e8f5e9 75%);
+  background-size: 200% 100%;
+  border-radius: 14px;
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+/* ── Empty State ── */
+.alerts-empty {
+  text-align: center;
+  padding: 40px 20px;
+  background: #f9fff8;
+  border: 2px dashed #c8e6c9;
+  border-radius: 14px;
+  color: #777;
+}
+.alerts-empty__icon { font-size: 2.5rem; display: block; margin-bottom: 10px; }
+.alerts-empty__hint { font-size: 0.85rem; color: #aaa; }
+
+/* ══ AlertCard Styles ══ */
+.alert-card {
+  background: #fff;
+  border: 1.5px solid #c8e6c9;
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.alert-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(27, 94, 32, 0.12);
+}
+.alert-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.alert-card__crop {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1b5e20;
+}
+.alert-card__badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+.badge--on  { background: #e8f5e9; color: #2e7d32; }
+.badge--off { background: #f5f5f5; color: #999; }
+
+.alert-card__details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.alert-card__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+}
+.alert-card__label {
+  color: #888;
+  font-weight: 500;
+}
+.alert-card__value {
+  color: #333;
+  font-weight: 600;
+  text-align: right;
+  word-break: break-all;
+  max-width: 60%;
+}
+
+.alert-card__delete {
+  background: none;
+  border: 1.5px solid #ef9a9a;
+  color: #c62828;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+  width: 100%;
+}
+.alert-card__delete:hover {
+  background: #ffebee;
+  transform: scale(1.01);
+}
+
+/* ── Loading Spinner ── */
+.alerts-loading {
+  text-align: center;
+  padding: 60px;
+  font-size: 1.1rem;
+  color: #666;
+}
+
+/* ── Info Box at bottom ── */
+.alerts-info-box {
+  margin-top: 32px;
+  background: linear-gradient(135deg, #f1f8e9, #e8f5e9);
+  border: 1px solid #c8e6c9;
+  border-radius: 14px;
+  padding: 20px 24px;
+}
+.alerts-info-box h4 {
+  color: #1b5e20;
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+.alerts-info-box ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style: none;
+}
+.alerts-info-box ul li {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: #555;
+  padding-left: 0;
+}
