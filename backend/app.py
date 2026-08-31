@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
 from config import Config
 from routes import main_bp
@@ -25,12 +25,23 @@ def create_app():
                     "http://localhost:3000"
                 ],
                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-                "allow_headers": ["Content-Type", "Authorization", "x-clerk-user-id"],
+                "allow_headers": [
+                    "Content-Type",
+                    "Authorization",
+                    "x-clerk-user-id"
+                ],
             }
         }
     )
 
     app.register_blueprint(main_bp)
+
+    @app.route("/api/health", methods=["GET"])
+    def health_check():
+        return jsonify({
+            "status": "ok",
+            "message": "Krishi Mitra backend is running"
+        }), 200
 
     return app
 
