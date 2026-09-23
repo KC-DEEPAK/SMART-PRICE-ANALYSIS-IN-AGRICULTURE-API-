@@ -17,13 +17,20 @@ class APIService:
     }
 
     @staticmethod
-    def fetch_live_crop_prices():
+    def clear_cache():
+        """Helper method to invalidate in-memory cache."""
+        APIService._cache["data"] = None
+        APIService._cache["timestamp"] = 0
+        logger.info("APIService cache invalidated.")
+
+    @staticmethod
+    def fetch_live_crop_prices(force_refresh=False):
         """
         Fetch live crop prices from data.gov.in API.
         Uses in-memory caching to avoid repeated API calls.
         """
         # Check cache validity
-        if APIService._cache["data"] is not None:
+        if not force_refresh and APIService._cache["data"] is not None:
             if time.time() - APIService._cache["timestamp"] < Config.CACHE_TIMEOUT:
                 logger.info("Returning cached crop prices.")
                 return APIService._cache["data"], None

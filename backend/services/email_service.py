@@ -16,10 +16,18 @@ class EmailService:
     @staticmethod
     def send_price_alert(user_name, email, crop, price, market, state):
         """Sends a price alert email using Resend"""
-        if not getattr(Config, 'RESEND_API_KEY', None):
-            logger.error("RESEND_API_KEY is not set.")
-            return False, "Email API key not configured"
+        api_key = getattr(Config, 'RESEND_API_KEY', None)
+        if not api_key or str(api_key).strip() in ["", "re_YOUR_RESEND_API_KEY_HERE"]:
+            logger.error("RESEND_API_KEY is not configured or is set to placeholder.")
+            return False, "RESEND_API_KEY is not configured or is set to a placeholder."
             
+        if not email or "@" not in str(email):
+            logger.error(f"Invalid recipient email address: '{email}'")
+            return False, f"Invalid recipient email address: {email}"
+
+        # Assign API key to resend library before sending
+        resend.api_key = str(api_key).strip()
+
         subject = "🌾 Smart Crop Price Alert"
         html_content = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
@@ -44,14 +52,15 @@ class EmailService:
         try:
             params = {
                 "from": "Smart Crop <onboarding@resend.dev>", 
-                "to": [email],
+                "to": [str(email).strip()],
                 "subject": subject,
                 "html": html_content
             }
             
+            logger.info(f"Attempting to send email via Resend to {email}...")
             response = resend.Emails.send(params)
-            logger.info(f"Price alert email sent to {email}")
+            logger.info(f"Resend API Response for {email}: {response}")
             return True, response
         except Exception as e:
-            logger.error(f"Failed to send email to {email}: {str(e)}")
+            logger.error(f"Failed to send email via Resend to {email}: {str(e)}")
             return False, str(e)

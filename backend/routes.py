@@ -4,6 +4,7 @@ from services.api_service import APIService
 from services.alert_service import AlertService
 from services.price_service import PriceService
 from services.push_service import PushService
+from services.seed_service import SeedService
 
 
 # Create the main Blueprint
@@ -272,3 +273,45 @@ def register_device():
         "success": False,
         "error": message
     }), 500
+
+
+# ============================================================
+# SEED VARIETY RECOMMENDATIONS
+# ============================================================
+
+@main_bp.route("/api/seed-recommendations", methods=["GET"])
+def get_seed_recommendations():
+    """
+    Get recommended seed varieties based on crop and optional state/season.
+    Query params:
+        crop: Crop name (e.g. Paddy, Wheat, Tomato, Cotton, etc.)
+        state: State name (optional)
+        season: Season name (optional)
+    """
+    crop = request.args.get("crop", "").strip()
+    state = request.args.get("state", "").strip()
+    season = request.args.get("season", "").strip()
+
+    if not crop:
+        return jsonify({
+            "success": False,
+            "error": "Crop parameter is required (e.g. ?crop=Tomato)"
+        }), 400
+
+    result = SeedService.get_recommendations(
+        crop_query=crop,
+        state_query=state if state else None,
+        season_query=season if season else None
+    )
+
+    return jsonify(result), 200
+
+
+@main_bp.route("/api/seed-recommendations/meta", methods=["GET"])
+def get_seed_meta():
+    """Get metadata list of available crops and states for frontend filters."""
+    meta = SeedService.get_metadata()
+    return jsonify({
+        "success": True,
+        **meta
+    }), 200

@@ -10,3 +10,6 @@ frontend/build/
 
 __pycache__/
 *.pyc
+# Firebase Admin SDK private key
+*-firebase-adminsdk-*.json
+firebase-service-account.json

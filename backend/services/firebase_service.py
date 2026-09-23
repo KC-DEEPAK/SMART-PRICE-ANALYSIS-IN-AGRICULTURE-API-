@@ -6,24 +6,31 @@ from firebase_admin import credentials, messaging
 
 # Initialize Firebase only once
 if not firebase_admin._apps:
-
     firebase_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
-
+    
     if not firebase_json:
-        raise RuntimeError(
-            "FIREBASE_SERVICE_ACCOUNT_JSON environment variable is missing"
+        # Check local file in backend directory
+        local_json_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "krishi-mitra-9cc97-firebase-adminsdk-fbsvc-3d973fb283.json"
         )
+        if os.path.exists(local_json_path):
+            try:
+                with open(local_json_path, "r", encoding="utf-8") as f:
+                    firebase_json = f.read()
+            except Exception as e:
+                print(f"Warning: Could not read local Firebase JSON: {e}")
 
-    try:
-        firebase_credentials = json.loads(firebase_json)
-    except json.JSONDecodeError as e:
-        raise RuntimeError(
-            f"Invalid FIREBASE_SERVICE_ACCOUNT_JSON: {e}"
-        )
+    if firebase_json:
+        try:
+            firebase_credentials = json.loads(firebase_json)
+            cred = credentials.Certificate(firebase_credentials)
+            firebase_admin.initialize_app(cred)
+        except Exception as e:
+            print(f"Warning: Firebase Admin SDK initialization failed: {e}")
+    else:
+        print("Warning: FIREBASE_SERVICE_ACCOUNT_JSON not set. FCM push notifications disabled.")
 
-    cred = credentials.Certificate(firebase_credentials)
-
-    firebase_admin.initialize_app(cred)
 
 
 class FirebaseService:
