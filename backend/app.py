@@ -28,7 +28,8 @@ def create_app():
                 "allow_headers": [
                     "Content-Type",
                     "Authorization",
-                    "x-clerk-user-id"
+                    "x-clerk-user-id",
+                    "x-clerk-user-email"
                 ],
             }
         }

@@ -1,11 +1,18 @@
 const en = {
-  // Navbar
+  // Navbar & Navigation
+  home: "Home",
   dashboard: "Dashboard",
   priceList: "Price List",
   comparison: "Comparison",
   fertilizer: "Fertilizer",
+  seedRecommendation: "Seed Recommendation",
   seasonGuide: "Season Guide",
-  marketMap: "Market Map",
+  marketMap: "Nearby Market Map",
+  diseaseGuide: "Disease Guide",
+  smartSell: "Smart Sell",
+  cropHealth: "Crop Health",
+  priceAlerts: "Price Alerts",
+  aiAssistant: "AI Assistant",
   login: "Login",
   account: "My Account",
   logout: "Logout",

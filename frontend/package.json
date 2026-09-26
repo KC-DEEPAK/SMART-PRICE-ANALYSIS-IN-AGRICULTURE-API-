@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/push-notifications": "^8.1.2",
     "@clerk/clerk-react": "^5.61.6",
     "chart.js": "^4.5.1",
     "leaflet": "^1.9.4",

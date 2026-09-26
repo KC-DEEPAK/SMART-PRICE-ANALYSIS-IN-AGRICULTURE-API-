@@ -1,0 +1,18 @@
+{
+  "fetched_at": "2026-09-26T16:38:24.756001",
+  "source": "data.gov.in",
+  "data": [
+    {
+      "State": "Karnataka",
+      "District": "Bangalore",
+      "Market": "RMC",
+      "Commodity": "Tomato",
+      "Variety": "Local",
+      "Grade": "FAQ",
+      "Arrival_Date": "26/09/2026",
+      "Min_x0020_Price": 2000,
+      "Max_x0020_Price": 3000,
+      "Modal_x0020_Price": 2500
+    }
+  ]
+}

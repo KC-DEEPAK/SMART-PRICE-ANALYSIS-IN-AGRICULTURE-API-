@@ -5,6 +5,7 @@ from services.alert_service import AlertService
 from services.price_service import PriceService
 from services.push_service import PushService
 from services.seed_service import SeedService
+from services.user_service import UserService
 
 
 # Create the main Blueprint
@@ -20,14 +21,15 @@ def home():
 @main_bp.route("/api/data", methods=["GET"])
 def get_data():
     """
-    Fetch and return live crop prices from data.gov.in API.
+    Fetch and return live crop prices from data.gov.in API with cache/fallback resiliency.
     """
     data, error = APIService.fetch_live_crop_prices()
 
-    if error:
+    if not data and error:
         return jsonify([]), 500
 
     return jsonify(data)
+
 
 
 @main_bp.route("/api/chat", methods=["POST"])
@@ -314,4 +316,107 @@ def get_seed_meta():
     return jsonify({
         "success": True,
         **meta
-    }), 200
+    }), 200
+
+
+# ============================================================
+# USER SYNCHRONIZATION & ADMIN PORTAL APIS
+# ============================================================
+
+@main_bp.route("/api/user/sync", methods=["POST"])
+def sync_user():
+    """
+    Synchronize authenticated Clerk user information with local backend.
+    """
+    user_id = request.headers.get("x-clerk-user-id")
+    if not user_id:
+        return jsonify({
+            "success": False,
+            "error": "Unauthorized: Clerk user ID is missing"
+        }), 401
+
+    data = request.get_json() or {}
+    name = data.get("name") or request.headers.get("x-clerk-user-name") or "Farmer"
+    email = data.get("email") or request.headers.get("x-clerk-user-email") or ""
+
+    success, result = UserService.sync_user(user_id, name, email)
+
+    if success:
+        return jsonify({
+            "success": True,
+            "is_admin": UserService.is_admin_email(email),
+            "user": result
+        }), 200
+
+    return jsonify({
+        "success": False,
+        "error": str(result)
+    }), 500
+
+
+@main_bp.route("/api/admin/check", methods=["GET"])
+def check_admin():
+    """
+    Verify whether the current Clerk user is authorized as an Admin.
+    """
+    is_admin, error_or_id, status_code = UserService.verify_admin_request(request)
+
+    if not is_admin:
+        return jsonify({
+            "success": False,
+            "error": error_or_id
+        }), status_code
+
+    return jsonify({
+        "success": True,
+        "is_admin": True,
+        "admin_email": UserService.get_admin_email()
+    }), 200
+
+
+@main_bp.route("/api/admin/stats", methods=["GET"])
+def get_admin_stats():
+    """
+    Get summary metrics for Admin Dashboard.
+    Protected: Admin access required.
+    """
+    is_admin, error_or_id, status_code = UserService.verify_admin_request(request)
+
+    if not is_admin:
+        return jsonify({
+            "success": False,
+            "error": error_or_id
+        }), status_code
+
+    stats = UserService.get_admin_stats()
+
+    return jsonify({
+        "success": True,
+        "stats": stats
+    }), 200
+
+
+@main_bp.route("/api/admin/users", methods=["GET"])
+def get_admin_users():
+    """
+    Get list of registered farmers / users.
+    Protected: Admin access required.
+    Supports ?q= search parameter.
+    """
+    is_admin, error_or_id, status_code = UserService.verify_admin_request(request)
+
+    if not is_admin:
+        return jsonify({
+            "success": False,
+            "error": error_or_id
+        }), status_code
+
+    query = request.args.get("q", "").strip()
+    users = UserService.get_all_users(search_query=query)
+
+    return jsonify({
+        "success": True,
+        "users": users,
+        "count": len(users)
+    }), 200
+

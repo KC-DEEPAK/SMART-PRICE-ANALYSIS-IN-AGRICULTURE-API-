@@ -1,0 +1,31 @@
+/* App Layout Styling */
+.app-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main-content {
+  margin-top: 64px;
+  margin-left: 240px;
+  min-height: calc(100vh - 64px);
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+}
+
+.app-main-content.sidebar-collapsed {
+  margin-left: 72px;
+}
+
+.app-main-inner {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Responsive adjustment for tablet/mobile */
+@media (max-width: 768px) {
+  .app-main-content,
+  .app-main-content.sidebar-collapsed {
+    margin-left: 0 !important;
+  }
+}

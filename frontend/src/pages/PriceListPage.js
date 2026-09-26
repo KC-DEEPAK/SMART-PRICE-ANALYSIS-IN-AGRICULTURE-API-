@@ -20,27 +20,21 @@ function PriceListPage() {
       .then(json => setData(json));
   }, []);
 
-  const crops = [
-    ...new Set(
-      data
-        .map(
-          d =>
-            d.Commodity ||
-            d.commodity ||
-            d.Crop ||
-            d.crop_name
-        )
-        .filter(Boolean)
-    )
-  ].filter(c => selectedSeason === "All" || getCropSeason(c) === selectedSeason);
+  const getCropName = (d) =>
+    (d?.Commodity || d?.commodity || d?.Crop || d?.crop_name || "").trim();
 
-  const cropData = data.filter(d => {
-    const name =
-      d.Commodity ||
-      d.commodity ||
-      d.Crop ||
-      d.crop_name;
-    return name === selectedCrop;
+  // Dynamic extraction of unique, sorted crop list from actual backend API response
+  const rawDataArray = Array.isArray(data) ? data : (data?.records || data?.data || []);
+  const allUniqueCrops = Array.from(
+    new Set(rawDataArray.map(getCropName).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b));
+
+  const crops = allUniqueCrops.filter(
+    (c) => selectedSeason === "All" || getCropSeason(c) === selectedSeason
+  );
+
+  const cropData = rawDataArray.filter((d) => {
+    return getCropName(d) === selectedCrop;
   });
 
   const sortedData = [...cropData].sort(

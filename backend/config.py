@@ -26,4 +26,6 @@ class Config:
     # Email and Auth Configurations
     RESEND_API_KEY = os.getenv("RESEND_API_KEY")
     CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
+    ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "deepakkcdeepu77@gmail.com")
+
 

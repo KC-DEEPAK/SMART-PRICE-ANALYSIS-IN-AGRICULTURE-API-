@@ -21,6 +21,10 @@ function Chatbot() {
       .then(res => res.json())
       .then(json => setCropPriceData(json))
       .catch(err => console.error("Failed to fetch price data for chatbot", err));
+
+    const handleCustomOpen = () => setIsOpen(true);
+    window.addEventListener("openChatbot", handleCustomOpen);
+    return () => window.removeEventListener("openChatbot", handleCustomOpen);
   }, []);
 
   // Initialize welcome message when language is loaded

@@ -3,14 +3,16 @@ import time
 import os
 import logging
 from config import Config
+from services.price_cache_service import PriceCacheService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class APIService:
     """Service to handle fetching API data and communicating with Gemini."""
-    
-    # Static cache to store API data based on CACHE_TIMEOUT
+
+    # In-memory cache to store API data based on CACHE_TIMEOUT
     _cache = {
         "data": None,
         "timestamp": 0
@@ -26,80 +28,96 @@ class APIService:
     @staticmethod
     def fetch_live_crop_prices(force_refresh=False):
         """
-        Fetch live crop prices from data.gov.in API.
-        Uses in-memory caching to avoid repeated API calls.
+        Fetch live crop prices with 3-tier fallback architecture:
+          1. LIVE: data.gov.in Government API (5-8s timeout). Save to price_cache.json if valid.
+          2. CACHE: Latest successful price_cache.json persistent cache.
+          3. FALLBACK: Static fallback_crop_prices.json dataset.
         """
-        # Check cache validity
+        # Step 0: Check short-term in-memory cache validity
         if not force_refresh and APIService._cache["data"] is not None:
             if time.time() - APIService._cache["timestamp"] < Config.CACHE_TIMEOUT:
-                logger.info("Returning cached crop prices.")
+                logger.info("[CACHE] Returning in-memory cached crop prices.")
                 return APIService._cache["data"], None
-                
+
         api_key = Config.DATA_GOV_API_KEY
         resource_id = Config.DATA_GOV_RESOURCE_ID
-        
-        if not api_key:
-            return None, "DATA_GOV_API_KEY is not configured on the server."
-            
         url = f"https://api.data.gov.in/resource/{resource_id}"
-        
-        # We request 500 records to provide a good dataset.
-        # Limit adjusted to 500 to keep the response snappy.
+
         params = {
             "api-key": api_key,
             "format": "json",
-            "limit": int(os.getenv("LIMIT_PER_CROP", 500))
+            "limit": int(os.getenv("LIMIT_PER_CROP", 200))
         }
-        
+
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
-        
-        try:
-            logger.info("Fetching live data from data.gov.in API...")
-            response = requests.get(url, params=params, headers=headers, timeout=20)
-            response.raise_for_status()
-            
-            data = response.json()
-            
-            if not data or "records" not in data:
-                return None, "Received invalid or empty response format from Government API."
-                
-            records = data.get("records", [])
-            if not records:
-                return None, "No active market records are available right now."
-                
-            # Transform to match frontend's expected JSON structure (which matches the old CSV)
-            transformed_data = []
-            for record in records:
-                transformed_data.append({
-                    "State": record.get("state", ""),
-                    "District": record.get("district", ""),
-                    "Market": record.get("market", ""),
-                    "Commodity": record.get("commodity", ""),
-                    "Variety": record.get("variety", ""),
-                    "Grade": record.get("grade", ""),
-                    "Arrival_Date": record.get("arrival_date", ""),
-                    "Min_x0020_Price": record.get("min_price", 0),
-                    "Max_x0020_Price": record.get("max_price", 0),
-                    "Modal_x0020_Price": record.get("modal_price", 0)
-                })
-                
-            # Update cache with new data
-            APIService._cache["data"] = transformed_data
+
+        # Step 1: Try Government API (LIVE)
+        if api_key:
+            try:
+                logger.info("Fetching live data from data.gov.in API (timeout=6s)...")
+                response = requests.get(url, params=params, headers=headers, timeout=6)
+
+                if response.status_code == 200:
+                    data = response.json() if response.text else None
+                    records = data.get("records", []) if isinstance(data, dict) else []
+
+                    if records and len(records) > 0:
+                        transformed_data = []
+                        for record in records:
+                            transformed_data.append({
+                                "State": record.get("state", ""),
+                                "District": record.get("district", ""),
+                                "Market": record.get("market", ""),
+                                "Commodity": record.get("commodity", ""),
+                                "Variety": record.get("variety", ""),
+                                "Grade": record.get("grade", ""),
+                                "Arrival_Date": record.get("arrival_date", ""),
+                                "Min_x0020_Price": record.get("min_price", 0),
+                                "Max_x0020_Price": record.get("max_price", 0),
+                                "Modal_x0020_Price": record.get("modal_price", 0)
+                            })
+
+                        if len(transformed_data) > 0:
+                            logger.info(f"[LIVE] Government API data fetched successfully ({len(transformed_data)} records)")
+                            # Save to persistent JSON cache
+                            PriceCacheService.save_cache(transformed_data, source="data.gov.in")
+                            # Update in-memory cache
+                            APIService._cache["data"] = transformed_data
+                            APIService._cache["timestamp"] = time.time()
+                            return transformed_data, None
+
+                logger.warning(f"[ERROR] Government API returned status code {response.status_code} or empty records.")
+            except requests.exceptions.Timeout:
+                logger.warning("[ERROR] Government API request timed out (timeout=6s).")
+            except requests.exceptions.ConnectionError:
+                logger.warning("[ERROR] Government API connection error.")
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"[ERROR] Government API request failed: {e}")
+            except Exception as e:
+                logger.warning(f"[ERROR] Government API processing exception: {e}")
+
+        # Step 2: Try Persistent Cache (CACHE)
+        cached_data = PriceCacheService.get_cache()
+        if cached_data and len(cached_data) > 0:
+            logger.info(f"[CACHE] Government API unavailable, using cached data ({len(cached_data)} records)")
+            APIService._cache["data"] = cached_data
             APIService._cache["timestamp"] = time.time()
-            logger.info(f"Successfully fetched and cached {len(transformed_data)} crop price records.")
-            
-            return transformed_data, None
-            
-        except requests.exceptions.Timeout:
-            return None, "Government API request timed out."
-        except requests.exceptions.ConnectionError:
-            return None, "Government API is currently unavailable."
-        except requests.exceptions.RequestException as e:
-            return None, f"Error fetching from Government API: {str(e)}"
-        except Exception as e:
-            return None, f"An unexpected error occurred: {str(e)}"
+            return cached_data, None
+
+        # Step 3: Try Static Fallback Dataset (FALLBACK)
+        fallback_data = PriceCacheService.get_fallback()
+        if fallback_data and len(fallback_data) > 0:
+            logger.info(f"[FALLBACK] No valid cache available, using fallback dataset ({len(fallback_data)} records)")
+            APIService._cache["data"] = fallback_data
+            APIService._cache["timestamp"] = time.time()
+            return fallback_data, None
+
+        logger.error("[ERROR] No live, cached, or fallback crop price data available.")
+        return [], "No market data available right now."
+
+
 
     @staticmethod
     def get_gemini_chat_response(message, crop_price_data):
