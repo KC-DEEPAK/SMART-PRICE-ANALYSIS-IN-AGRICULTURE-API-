@@ -1,10 +1,90 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import LanguageToggle from "./LanguageToggle";
 import { UserButton } from "@clerk/clerk-react";
+import { API_URL } from "../utils/api";
 import "./Header.css";
 
 function Header({ isSidebarCollapsed, toggleSidebar, toggleMobileMenu }) {
+  const [dataStatus, setDataStatus] = useState(null);
+
+  useEffect(() => {
+    fetch(`${API_URL}/status`)
+      .then(res => res.json())
+      .then(json => {
+        if (json && json.success) {
+          setDataStatus(json);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const renderStatusPill = () => {
+    if (!dataStatus) return null;
+    const source = dataStatus.source;
+    if (source === "live" || dataStatus.is_live) {
+      return (
+        <span
+          title="Connected live to Government Agmarknet API"
+          style={{
+            fontSize: "12px",
+            background: "rgba(34, 197, 94, 0.15)",
+            color: "#15803d",
+            border: "1px solid #86efac",
+            padding: "2px 8px",
+            borderRadius: "12px",
+            fontWeight: "600",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px"
+          }}
+        >
+          🟢 Live Data
+        </span>
+      );
+    } else if (source === "cache") {
+      return (
+        <span
+          title="Government API down/slow; using latest cached dataset"
+          style={{
+            fontSize: "12px",
+            background: "rgba(234, 179, 8, 0.15)",
+            color: "#a16207",
+            border: "1px solid #fde047",
+            padding: "2px 8px",
+            borderRadius: "12px",
+            fontWeight: "600",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px"
+          }}
+        >
+          🟡 Cached Data
+        </span>
+      );
+    } else {
+      return (
+        <span
+          title="Using fallback dataset"
+          style={{
+            fontSize: "12px",
+            background: "rgba(249, 115, 22, 0.15)",
+            color: "#c2410c",
+            border: "1px solid #fdba74",
+            padding: "2px 8px",
+            borderRadius: "12px",
+            fontWeight: "600",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px"
+          }}
+        >
+          🟠 Fallback Data
+        </span>
+      );
+    }
+  };
+
   return (
     <header className="app-top-header">
       <div className="header-left">
@@ -33,6 +113,9 @@ function Header({ isSidebarCollapsed, toggleSidebar, toggleMobileMenu }) {
           <span className="header-logo-icon">🌾</span>
           <span className="header-brand-title">KRISHI MITRA</span>
         </Link>
+
+        {/* Status Indicator */}
+        <div style={{ marginLeft: "10px" }}>{renderStatusPill()}</div>
       </div>
 
       <div className="header-right">
@@ -57,3 +140,4 @@ function Header({ isSidebarCollapsed, toggleSidebar, toggleMobileMenu }) {
 }
 
 export default Header;
+

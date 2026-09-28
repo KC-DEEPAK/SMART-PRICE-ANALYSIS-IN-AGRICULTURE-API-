@@ -5,3 +5,4 @@ frontend/.env.local
 __pycache__/
 *.pyc
 *.db
+tmp/

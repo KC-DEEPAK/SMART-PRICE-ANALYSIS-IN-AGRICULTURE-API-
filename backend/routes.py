@@ -23,12 +23,26 @@ def get_data():
     """
     Fetch and return live crop prices from data.gov.in API with cache/fallback resiliency.
     """
-    data, error = APIService.fetch_live_crop_prices()
+    force_refresh = request.args.get("refresh", "false").lower() == "true"
+    data, error = APIService.fetch_live_crop_prices(force_refresh=force_refresh)
 
     if not data and error:
         return jsonify([]), 500
 
     return jsonify(data)
+
+
+@main_bp.route("/api/data/status", methods=["GET"])
+def get_data_status():
+    """
+    Return current data source status (source: live / cache / fallback, record_count, fetched_at, is_live).
+    """
+    status = APIService.get_status_info()
+    return jsonify({
+        "success": True,
+        **status
+    }), 200
+
 
 
 

@@ -39,10 +39,16 @@ def create_app():
 
     @app.route("/api/health", methods=["GET"])
     def health_check():
+        from services.api_service import APIService
+        status_info = APIService.get_status_info()
         return jsonify({
             "status": "ok",
-            "message": "Krishi Mitra backend is running"
+            "message": "Krishi Mitra backend is running",
+            "data_source": status_info.get("source", "unknown"),
+            "record_count": status_info.get("record_count", 0),
+            "is_live": status_info.get("is_live", False)
         }), 200
+
 
     return app
 
