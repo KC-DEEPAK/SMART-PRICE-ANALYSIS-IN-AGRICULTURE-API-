@@ -18,12 +18,7 @@ def create_app():
         app,
         resources={
             r"/api/*": {
-                "origins": [
-                    "https://localhost",
-                    "http://localhost",
-                    "http://127.0.0.1:5000",
-                    "http://localhost:3000"
-                ],
+                "origins": "*",
                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                 "allow_headers": [
                     "Content-Type",
@@ -36,6 +31,24 @@ def create_app():
     )
 
     app.register_blueprint(main_bp)
+
+    # Initialize daily background scheduled scraper
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from services.crop_price_service import CropPriceCollectorService
+        
+        scheduler = BackgroundScheduler()
+        # Schedule data collector once daily
+        scheduler.add_job(
+            func=lambda: CropPriceCollectorService.get_prices(crop_query="Tomato", force_refresh=True),
+            trigger="interval",
+            hours=24,
+            id="daily_crop_price_collector"
+        )
+        scheduler.start()
+        logging.info("[SCHEDULER] Daily crop price data collection scheduler started.")
+    except Exception as e:
+        logging.warning(f"[SCHEDULER] Background scheduler startup notice: {e}")
 
     @app.route("/api/health", methods=["GET"])
     def health_check():

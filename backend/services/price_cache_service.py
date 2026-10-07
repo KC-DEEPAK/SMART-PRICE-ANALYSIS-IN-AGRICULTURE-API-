@@ -26,7 +26,7 @@ class PriceCacheService:
         commodity = str(record.get("Commodity") or record.get("commodity") or record.get("Crop") or "").strip().lower()
         variety = str(record.get("Variety") or record.get("variety") or "").strip().lower()
         grade = str(record.get("Grade") or record.get("grade") or "").strip().lower()
-        arrival_date = str(record.get("Arrival_Date") or record.get("arrival_date") or "").strip().lower()
+        arrival_date = str(record.get("Arrival_Date") or record.get("arrival_date") or "").strip().lower().replace("-", "/")
         return (state, district, market, commodity, variety, grade, arrival_date)
 
     @staticmethod
@@ -104,7 +104,7 @@ class PriceCacheService:
         if not os.path.exists(MASTER_FILE):
             return []
         try:
-            with open(MASTER_FILE, "r", encoding="utf-8") as f:
+            with open(MASTER_FILE, "r", encoding="utf-8-sig") as f:
                 data = json.load(f)
             if isinstance(data, list):
                 return data
@@ -117,7 +117,8 @@ class PriceCacheService:
     @staticmethod
     def save_master(data):
         """Save merged list atomically to master_crop_prices.json."""
-        if not data or not isinstance(data, list):
+        if not data or not isinstance(data, list) or len(data) == 0:
+            logger.warning("[MASTER] Attempted to save empty data to master. Aborted.")
             return False
         try:
             os.makedirs(DATA_DIR, exist_ok=True)
@@ -173,7 +174,7 @@ class PriceCacheService:
             return None
 
         try:
-            with open(CACHE_FILE, "r", encoding="utf-8") as f:
+            with open(CACHE_FILE, "r", encoding="utf-8-sig") as f:
                 payload = json.load(f)
 
             if isinstance(payload, dict) and "data" in payload:
@@ -192,7 +193,7 @@ class PriceCacheService:
             return None
 
         try:
-            with open(CACHE_FILE, "r", encoding="utf-8") as f:
+            with open(CACHE_FILE, "r", encoding="utf-8-sig") as f:
                 payload = json.load(f)
 
             if isinstance(payload, dict) and "data" in payload:
@@ -213,7 +214,7 @@ class PriceCacheService:
             return None
 
         try:
-            with open(FALLBACK_FILE, "r", encoding="utf-8") as f:
+            with open(FALLBACK_FILE, "r", encoding="utf-8-sig") as f:
                 data = json.load(f)
 
             if data and isinstance(data, list) and len(data) > 0:

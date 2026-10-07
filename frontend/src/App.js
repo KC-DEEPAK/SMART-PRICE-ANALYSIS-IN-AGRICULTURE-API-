@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { CropPriceProvider } from "./context/CropPriceContext";
 
 import {
   SignedIn,
@@ -22,6 +23,8 @@ import MapPage from "./pages/MapPage";
 import PriceAlertPage from "./pages/PriceAlertPage";
 import SeedRecommendationPage from "./pages/SeedRecommendationPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+import SmartSellPage from "./pages/SmartSellPage";
+import CropHealthPage from "./pages/CropHealthPage";
 import Chatbot from "./components/Chatbot";
 import UserSync from "./components/UserSync";
 import { useAdminAuth } from "./hooks/useAdminAuth";
@@ -84,70 +87,13 @@ function ApplicationLayoutWrapper() {
   );
 }
 
-// Temporary placeholder for Smart Sell
-function SmartSellPlaceholder() {
-  return (
-    <div
-      className="page-container"
-      style={{ padding: "40px", textAlign: "center" }}
-    >
-      <div className="agri-card">
-        <h2>💡 Smart Selling Decision Engine</h2>
-
-        <p style={{ color: "#666", marginTop: "10px" }}>
-          Calculate true net returns based on market price, travel distance,
-          and estimated transport costs.
-        </p>
-
-        <p
-          style={{
-            fontWeight: "bold",
-            color: "var(--primary-green)",
-            marginTop: "20px",
-          }}
-        >
-          🚀 Coming in Phase 2 Implementation!
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// Temporary placeholder for Crop Health
-function CropHealthPlaceholder() {
-  return (
-    <div
-      className="page-container"
-      style={{ padding: "40px", textAlign: "center" }}
-    >
-      <div className="agri-card">
-        <h2>🔬 AI Crop Health & Leaf Scanner</h2>
-
-        <p style={{ color: "#666", marginTop: "10px" }}>
-          Upload leaf images for automated computer vision disease
-          identification and treatment recommendations.
-        </p>
-
-        <p
-          style={{
-            fontWeight: "bold",
-            color: "var(--primary-green)",
-            marginTop: "20px",
-          }}
-        >
-          🚀 Coming in Phase 3 Implementation!
-        </p>
-      </div>
-    </div>
-  );
-}
-
 function App() {
   return (
     <AuthProvider>
-      <UserSync />
-      <BrowserRouter>
-        <Routes>
+      <CropPriceProvider>
+        <UserSync />
+        <BrowserRouter>
+          <Routes>
 
           {/* PUBLIC LANDING PAGE */}
           <Route
@@ -214,7 +160,7 @@ function App() {
               path="/smart-sell"
               element={
                 <ProtectedRoute>
-                  <SmartSellPlaceholder />
+                  <SmartSellPage />
                 </ProtectedRoute>
               }
             />
@@ -223,7 +169,7 @@ function App() {
               path="/crop-health"
               element={
                 <ProtectedRoute>
-                  <CropHealthPlaceholder />
+                  <CropHealthPage />
                 </ProtectedRoute>
               }
             />
@@ -263,6 +209,7 @@ function App() {
         <Chatbot />
 
       </BrowserRouter>
+      </CropPriceProvider>
     </AuthProvider>
   );
 }

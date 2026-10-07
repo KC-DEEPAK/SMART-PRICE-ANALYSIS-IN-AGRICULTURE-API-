@@ -1,44 +1,35 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import ComparisonChart from "../components/ComparisonChart";
 import { useLanguage } from "../context/LanguageContext";
-import { API_URL } from "../utils/api";
+import { useCropPrice } from "../context/CropPriceContext";
 import "./ComparisonPage.css";
 
 function ComparisonPage() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data, crops: globalCrops, loading } = useCropPrice();
   const [crop1, setCrop1] = useState("");
   const [crop2, setCrop2] = useState("");
   const { t } = useLanguage();
 
-  useEffect(() => {
-    setLoading(true);
-    fetch(API_URL)
-      .then(res => res.json())
-      .then(json => {
-        setData(json);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
-
   // Helper to extract crop name from a record
   const getCropName = d =>
-    d.Commodity || d.commodity || d.Crop || d.crop_name || "";
+    d.crop || d.Commodity || d.commodity || d.Crop || d.crop_name || "";
 
-  // Unique sorted crop list
-  const crops = [...new Set(data.map(getCropName).filter(Boolean))].sort();
+  // Unique sorted crop list from central context or dataset
+  const crops = (globalCrops && globalCrops.length > 0)
+    ? globalCrops
+    : [...new Set(data.map(getCropName).filter(Boolean))].sort();
 
   // Filter data for a given crop name
   const getDataForCrop = cropName =>
-    data.filter(d => getCropName(d) === cropName);
+    data.filter(d => getCropName(d).toLowerCase() === cropName.toLowerCase());
+
+  // Get price value from record
+  const getPrice = d => Number(d.modal_price || d.Modal_x0020_Price || 0);
 
   // Get best/worst market entry for a crop
   const getBestWorst = cropData => {
     if (!cropData || cropData.length === 0) return { best: null, worst: null };
-    const sorted = [...cropData].sort(
-      (a, b) => Number(b.Modal_x0020_Price) - Number(a.Modal_x0020_Price)
-    );
+    const sorted = [...cropData].sort((a, b) => getPrice(b) - getPrice(a));
     return { best: sorted[0], worst: sorted[sorted.length - 1] };
   };
 
@@ -49,11 +40,20 @@ function ComparisonPage() {
 
   const avgPrice = cropData => {
     if (!cropData || cropData.length === 0) return "—";
-    const total = cropData.reduce(
-      (sum, d) => sum + Number(d.Modal_x0020_Price || 0),
-      0
-    );
+    const total = cropData.reduce((sum, d) => sum + getPrice(d), 0);
     return Math.round(total / cropData.length).toLocaleString("en-IN");
+  };
+
+  const getMinPrice = cropData => {
+    if (!cropData || cropData.length === 0) return "—";
+    const min = Math.min(...cropData.map(getPrice).filter(p => p > 0));
+    return isFinite(min) ? min.toLocaleString("en-IN") : "—";
+  };
+
+  const getMaxPrice = cropData => {
+    if (!cropData || cropData.length === 0) return "—";
+    const max = Math.max(...cropData.map(getPrice));
+    return isFinite(max) ? max.toLocaleString("en-IN") : "—";
   };
 
   const bothSelected = crop1 && crop2;
@@ -205,29 +205,39 @@ function ComparisonPage() {
                     <td>{crop2Data.length}</td>
                   </tr>
                   <tr>
-                    <td>Average price (₹)</td>
+                    <td>Average modal price (₹)</td>
                     <td>₹{avgPrice(crop1Data)}</td>
                     <td>₹{avgPrice(crop2Data)}</td>
                   </tr>
                   <tr>
+                    <td>Lowest market price (₹)</td>
+                    <td>₹{getMinPrice(crop1Data)}</td>
+                    <td>₹{getMinPrice(crop2Data)}</td>
+                  </tr>
+                  <tr>
+                    <td>Highest market price (₹)</td>
+                    <td>₹{getMaxPrice(crop1Data)}</td>
+                    <td>₹{getMaxPrice(crop2Data)}</td>
+                  </tr>
+                  <tr>
                     <td>Best market</td>
-                    <td>{best1 ? best1.Market : "—"}</td>
-                    <td>{best2 ? best2.Market : "—"}</td>
+                    <td>{best1 ? (best1.market || best1.Market) : "—"}</td>
+                    <td>{best2 ? (best2.market || best2.Market) : "—"}</td>
                   </tr>
                   <tr>
                     <td>Best price (₹)</td>
-                    <td>{best1 ? `₹${Number(best1.Modal_x0020_Price).toLocaleString("en-IN")}` : "—"}</td>
-                    <td>{best2 ? `₹${Number(best2.Modal_x0020_Price).toLocaleString("en-IN")}` : "—"}</td>
+                    <td>{best1 ? `₹${getPrice(best1).toLocaleString("en-IN")}` : "—"}</td>
+                    <td>{best2 ? `₹${getPrice(best2).toLocaleString("en-IN")}` : "—"}</td>
                   </tr>
                   <tr>
                     <td>Worst market</td>
-                    <td>{worst1 ? worst1.Market : "—"}</td>
-                    <td>{worst2 ? worst2.Market : "—"}</td>
+                    <td>{worst1 ? (worst1.market || worst1.Market) : "—"}</td>
+                    <td>{worst2 ? (worst2.market || worst2.Market) : "—"}</td>
                   </tr>
                   <tr>
                     <td>Worst price (₹)</td>
-                    <td>{worst1 ? `₹${Number(worst1.Modal_x0020_Price).toLocaleString("en-IN")}` : "—"}</td>
-                    <td>{worst2 ? `₹${Number(worst2.Modal_x0020_Price).toLocaleString("en-IN")}` : "—"}</td>
+                    <td>{worst1 ? `₹${getPrice(worst1).toLocaleString("en-IN")}` : "—"}</td>
+                    <td>{worst2 ? `₹${getPrice(worst2).toLocaleString("en-IN")}` : "—"}</td>
                   </tr>
                 </tbody>
               </table>

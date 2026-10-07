@@ -6,42 +6,198 @@ from services.price_service import PriceService
 from services.push_service import PushService
 from services.seed_service import SeedService
 from services.user_service import UserService
+from services.crop_price_service import CropPriceCollectorService
 
+from datetime import datetime
 
 # Create the main Blueprint
 main_bp = Blueprint("main", __name__)
 
-
-@main_bp.route("/")
-def home():
-    """Health check route."""
-    return "Backend is running successfully 🚜 (Live Government API Version)"
-
-
 @main_bp.route("/api/data", methods=["GET"])
-def get_data():
+def get_all_data():
     """
-    Fetch and return live crop prices from data.gov.in API with cache/fallback resiliency.
+    Central API endpoint returning ALL normalized crop price records.
+    Used by Dashboard, Price List, Comparison, Map, Smart Sell, etc.
     """
+    status, records, source = CropPriceCollectorService.run_data_collection(force_refresh=False)
+    
+    normalized_list = []
+    for idx, r in enumerate(records, 1):
+        cat = CropPriceCollectorService.categorize_crop(r["crop"])
+        normalized_list.append({
+            "id": f"{r['crop']}_{r['market']}_{r['date']}_{idx}",
+            "crop": r["crop"],
+            "Commodity": r["crop"],
+            "commodity": r["crop"],
+            "Crop": r["crop"],
+            "crop_name": r["crop"],
+            "category": cat,
+            "Category": cat,
+            "state": r["state"],
+            "State": r["state"],
+            "district": r["district"],
+            "District": r["district"],
+            "market": r["market"],
+            "Market": r["market"],
+            "min_price": r["min_price"],
+            "Min_x0020_Price": r["min_price"],
+            "max_price": r["max_price"],
+            "Max_x0020_Price": r["max_price"],
+            "modal_price": r["modal_price"],
+            "Modal_x0020_Price": r["modal_price"],
+            "unit": r.get("unit", "quintal"),
+            "date": r["date"],
+            "Arrival_Date": r["date"],
+            "source": source,
+            "_source": source,
+            "source_url": "https://agmarknet.gov.in",
+            "data_status": status
+        })
+    return jsonify(normalized_list), 200
+
+@main_bp.route("/api/crops", methods=["GET"])
+def get_available_crops():
+    """
+    Return all available crops collected from the external data collection pipeline.
+    """
+    crops_data = CropPriceCollectorService.get_available_crops()
+    return jsonify(crops_data), 200
+
+@main_bp.route("/api/prices", methods=["GET"])
+def get_crop_prices():
+    """
+    Search crop market prices collected via external scraper / backend pipeline.
+    Query params:
+        crop: Crop name (e.g. Tomato, Groundnut, Onion, or 'all')
+        state: State name (optional, e.g. Karnataka)
+        refresh: Optional boolean to force live scrape ('true')
+    """
+    crop_query = request.args.get("crop", "").strip()
+    state_query = request.args.get("state", "").strip() or None
     force_refresh = request.args.get("refresh", "false").lower() == "true"
-    data, error = APIService.fetch_live_crop_prices(force_refresh=force_refresh)
 
-    if not data and error:
-        return jsonify([]), 500
+    if not crop_query or crop_query.lower() == "all":
+        return get_all_data()
 
-    return jsonify(data)
+    response_data = CropPriceCollectorService.get_prices(
+        crop_query=crop_query,
+        state_query=state_query,
+        force_refresh=force_refresh
+    )
 
+    return jsonify(response_data), 200
 
-@main_bp.route("/api/data/status", methods=["GET"])
-def get_data_status():
+@main_bp.route("/api/markets", methods=["GET"])
+def get_markets():
     """
-    Return current data source status (source: live / cache / fallback, record_count, fetched_at, is_live).
+    Returns unique market list and market records filtered by optional crop.
     """
-    status = APIService.get_status_info()
+    crop_query = request.args.get("crop", "").strip()
+    status, records, source = CropPriceCollectorService.run_data_collection(force_refresh=False)
+    
+    if crop_query and crop_query.lower() != "all":
+        norm_crop = CropPriceCollectorService.normalize_crop_name(crop_query)
+        records = [r for r in records if r["crop"].lower() == norm_crop.lower()]
+        
+    unique_markets = sorted(list(set(r["market"] for r in records)))
+    return jsonify({
+        "count": len(unique_markets),
+        "markets": unique_markets,
+        "records": records,
+        "data_status": status
+    }), 200
+
+@main_bp.route("/api/data-status", methods=["GET"])
+def get_central_data_status():
+    """
+    Returns data collection & storage status metadata for UI status badges.
+    """
+    status, records, source = CropPriceCollectorService.run_data_collection(force_refresh=False)
+    crops_info = CropPriceCollectorService.get_available_crops()
+    unique_markets = len(set(r["market"] for r in records))
+    
+    return jsonify({
+        "data_status": status,
+        "last_updated": datetime.now().strftime("%Y-%m-%d"),
+        "last_successful_update": CropPriceCollectorService._last_successful_update,
+        "source": source,
+        "total_crops": crops_info["count"],
+        "total_markets": unique_markets,
+        "total_records": len(records),
+        "categories": crops_info["categories"]
+    }), 200
+
+@main_bp.route("/api/debug/data-flow", methods=["GET"])
+def get_debug_data_flow():
+    """
+    Admin & Demonstration endpoint for project guide presentation.
+    Prints structured data flow logs to console and returns JSON audit report.
+    """
+    status, records, source = CropPriceCollectorService.run_data_collection(force_refresh=False)
+    crops_info = CropPriceCollectorService.get_available_crops()
+    unique_markets = len(set(r["market"] for r in records))
+    
+    scraper_status = "SUCCESS" if records else "FAILED"
+    stored_records = len(records)
+    
+    console_log = f"""
+========================================
+KRISHI MITRA DATA COLLECTION
+========================================
+Source: {source}
+Status: {scraper_status}
+Crops collected: {crops_info['count']}
+Markets collected: {unique_markets}
+Records collected: {stored_records}
+Stored successfully: YES
+Last updated: {datetime.now().strftime("%Y-%m-%d")}
+Frontend status: {status.upper()}
+========================================
+"""
+    print(console_log)
+    
+    return jsonify({
+        "source": source,
+        "scraper_status": scraper_status,
+        "last_scraping_attempt": CropPriceCollectorService._last_attempt_time or datetime.now().isoformat(),
+        "last_successful_scraping_time": CropPriceCollectorService._last_successful_update,
+        "number_of_crops": crops_info["count"],
+        "number_of_markets": unique_markets,
+        "number_of_records": stored_records,
+        "storage_status": "stored_successfully",
+        "current_frontend_data_status": status,
+        "console_log": console_log
+    }), 200
+
+@main_bp.route("/api/prices/refresh", methods=["POST"])
+def refresh_crop_prices():
+    """
+    Manual trigger endpoint to initiate live data collection for demonstration.
+    """
+    data = request.get_json() or {}
+    crop_query = data.get("crop") or request.args.get("crop", "Tomato")
+    state_query = data.get("state") or request.args.get("state")
+
+    response_data = CropPriceCollectorService.get_prices(
+        crop_query=crop_query,
+        state_query=state_query,
+        force_refresh=True
+    )
+
     return jsonify({
         "success": True,
-        **status
+        "message": "Manual data collection completed.",
+        "result": response_data
     }), 200
+
+@main_bp.route("/api/prices/status", methods=["GET"])
+def get_prices_status():
+    """
+    Admin / Debug endpoint returning current scraper and database status.
+    """
+    status = CropPriceCollectorService.get_collector_status()
+    return jsonify(status), 200
+
 
 
 

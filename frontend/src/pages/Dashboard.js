@@ -1,30 +1,20 @@
-import { useEffect, useState, useRef } from "react";
+import { useState, useRef } from "react";
 import DashboardCards from "../components/DashboardCards";
 import CategoryList from "../components/CategoryList";
 import TopBestCrops from "../components/TopBestCrops";
 import { speakBestMarket } from "../utils/speakPrice";
 import { useLanguage } from "../context/LanguageContext";
-import { API_URL } from "../utils/api";
+import { useCropPrice } from "../context/CropPriceContext";
 
 function Dashboard() {
-  const [data, setData] = useState([]);
+  const { data, statusInfo, loading } = useCropPrice();
   const [selectedCategory, setSelectedCategory] = useState(null);
   const hasSpoken = useRef(false);
   const { t } = useLanguage();
 
-  // 🔄 Load data
-  useEffect(() => {
-    fetch(API_URL)
-      .then(res => res.json())
-      .then(json => {
-        setData(json);
-      })
-      .catch(err => console.error(err));
-  }, []);
-
   // 🔊 MANUAL TRIGGER (IMPORTANT FOR BROWSER)
   const handleSpeakBestMarket = () => {
-    if (!data.length) return;
+    if (!data || !data.length) return;
 
     // 🕒 Time-based greeting
     const hour = new Date().getHours();
@@ -34,62 +24,75 @@ function Dashboard() {
 
     // ⭐ Find best market
     const best = data.reduce((max, cur) =>
-      Number(cur.Modal_x0020_Price) >
-      Number(max.Modal_x0020_Price)
+      Number(cur.modal_price || cur.Modal_x0020_Price || 0) >
+      Number(max.modal_price || max.Modal_x0020_Price || 0)
         ? cur
-        : max
+        : max,
+      data[0]
     );
 
     const crop =
+      best.crop ||
       best.Commodity ||
       best.commodity ||
       best.Crop ||
       best.crop_name;
 
+    const market = best.market || best.Market || "APMC Market";
+    const state = best.state || best.State || "Karnataka";
+    const price = best.modal_price || best.Modal_x0020_Price || 0;
+
     speakBestMarket({
       crop,
-      market: best.Market,
-      state: best.State,
-      price: best.Modal_x0020_Price,
+      market,
+      state,
+      price,
       greeting
     });
 
-    // Save spoken date
-    localStorage.setItem(
-      "spokenDate",
-      new Date().toDateString()
-    );
+    localStorage.setItem("spokenDate", new Date().toDateString());
     hasSpoken.current = true;
   };
 
   return (
     <div className="page-container">
-      {/* 🔊 VOICE BUTTON */}
-      <div className="mb-4 flex items-center justify-between">
-        <h2 style={{margin: 0}}>{t.cropDashboard}</h2>
+      {/* 🔊 VOICE BUTTON & TITLE */}
+      <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
+        <h2 style={{ margin: 0 }}>{t.cropDashboard}</h2>
         <button
           onClick={handleSpeakBestMarket}
           className="btn-primary"
+          disabled={loading || !data.length}
         >
           {t.hearBestPrice || "🔊 Hear Today’s Best Market"}
         </button>
       </div>
 
-      {/* DASHBOARD CARDS */}
-      <DashboardCards
-        data={data}
-        onCategoryClick={setSelectedCategory}
-      />
+      {loading ? (
+        <div className="agri-card text-center" style={{ padding: "40px" }}>
+          <div className="loading-spinner" />
+          <p style={{ color: "#64748b", marginTop: "12px" }}>Loading global crop price dataset...</p>
+        </div>
+      ) : (
+        <>
+          {/* DASHBOARD CARDS */}
+          <DashboardCards
+            data={data}
+            statusInfo={statusInfo}
+            onCategoryClick={setSelectedCategory}
+          />
 
-      {/* TOP CROPS */}
-      <TopBestCrops data={data} />
+          {/* TOP CROPS */}
+          <TopBestCrops data={data} />
 
-      {/* CATEGORY DETAILS */}
-      {selectedCategory && (
-        <CategoryList
-          data={data}
-          category={selectedCategory}
-        />
+          {/* CATEGORY DETAILS */}
+          {selectedCategory && (
+            <CategoryList
+              data={data}
+              category={selectedCategory}
+            />
+          )}
+        </>
       )}
     </div>
   );

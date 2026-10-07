@@ -1,13 +1,13 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import PriceListGraph from "../components/PriceListGraph";
+import SmartCropPriceAnalysis from "../components/SmartCropPriceAnalysis";
 import { speakDecision } from "../utils/speakDecision";
 import { getCropSeason } from "../utils/cropSeasons";
 import { useLanguage } from "../context/LanguageContext";
-import { API_URL } from "../utils/api";
+import { useCropPrice } from "../context/CropPriceContext";
 
 function PriceListPage() {
-  const [data, setData] = useState([]);
-  const [dataStatus, setDataStatus] = useState(null);
+  const { data, statusInfo: dataStatus, statusInfo, crops: contextCrops } = useCropPrice();
   const [selectedCrop, setSelectedCrop] = useState("");
   const [selectedSeason, setSelectedSeason] = useState("All");
   const [selectedState, setSelectedState] = useState("All");
@@ -18,27 +18,6 @@ function PriceListPage() {
   const { t } = useLanguage();
 
   const user = JSON.parse(localStorage.getItem("user")) || {};
-
-  useEffect(() => {
-    // Fetch main crop data
-    fetch(API_URL)
-      .then(res => res.json())
-      .then(json => {
-        const rawArray = Array.isArray(json) ? json : (json?.records || json?.data || []);
-        setData(rawArray);
-      })
-      .catch(err => console.error("Error fetching price data:", err));
-
-    // Fetch status metadata
-    fetch(`${API_URL}/status`)
-      .then(res => res.json())
-      .then(json => {
-        if (json && json.success) {
-          setDataStatus(json);
-        }
-      })
-      .catch(err => console.warn("Could not fetch data status metadata:", err));
-  }, []);
 
   const getCropName = (d) =>
     (d?.Commodity || d?.commodity || d?.Crop || d?.crop_name || "").trim();
@@ -222,6 +201,9 @@ function PriceListPage() {
 
   return (
     <div className="page-container">
+      {/* 🍅 Smart Crop Price Search & Analysis (External Scraper Data Flow) */}
+      <SmartCropPriceAnalysis initialCrop={selectedCrop || "Tomato"} />
+
       {/* Header & Controls Card */}
       <div className="agri-card mb-4 agri-card-left-border">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", marginBottom: "15px" }}>

@@ -11,7 +11,10 @@ class Config:
     
     # Resource ID for live crop market prices (Daily)
     # 9ef84268-d588-465a-a308-a864a43d0070 is the well-known daily market prices resource index
-    DATA_GOV_RESOURCE_ID = os.getenv("API_URL", "9ef84268-d588-465a-a308-a864a43d0070")
+    DATA_GOV_RESOURCE_ID = os.getenv(
+        "DATA_GOV_RESOURCE_ID",
+        "9ef84268-d588-465a-a308-a864a43d0070"
+    )
     
     # Gemini AI API Key for the chatbot
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
