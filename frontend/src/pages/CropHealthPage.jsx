@@ -1,34 +1,93 @@
 import React, { useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
+import diseaseFertilizerData from "../data/diseaseFertilizerData";
 
 export default function CropHealthPage() {
-  const [selectedCrop, setSelectedCrop] = useState("Tomato");
+  const [selectedCrop, setSelectedCrop] = useState("Apple");
   const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [diagnosis, setDiagnosis] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
   const { t } = useLanguage();
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setSelectedImageFile(file);
       setSelectedImage(URL.createObjectURL(file));
       setDiagnosis(null);
+      setErrorMsg(null);
     }
   };
 
-  const runAnalysis = () => {
-    if (!selectedImage) return;
+  const getRecommendation = (cropName, conditionName) => {
+    // Attempt to find a matching recommendation from the existing database
+    const cropData = diseaseFertilizerData[cropName];
+    if (!cropData) return null;
+    
+    // Simple substring match for flexibility (e.g. "Blight" matches "Early blight")
+    const match = cropData.find(d => 
+      conditionName.toLowerCase().includes(d.disease.toLowerCase()) || 
+      d.disease.toLowerCase().includes(conditionName.toLowerCase())
+    );
+    return match;
+  };
+
+  const runAnalysis = async () => {
+    if (!selectedImageFile) return;
     setAnalyzing(true);
-    setTimeout(() => {
-      setAnalyzing(false);
-      setDiagnosis({
-        condition: "Early Blight (Alternaria solani)",
-        confidence: "94%",
-        severity: "Moderate",
-        recommendation: "Apply Copper Fungicide or Mancozeb spray every 7-10 days. Ensure crop rotation and avoid overhead watering.",
-        organicSolution: "Neem Oil spray (5ml/L) + Potassium Bicarbonate dilution."
+    setErrorMsg(null);
+    setDiagnosis(null);
+
+    const formData = new FormData();
+    formData.append("image", selectedImageFile);
+
+    try {
+      const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:5000";
+      const response = await fetch(`${apiUrl}/api/disease/analyze`, {
+        method: "POST",
+        body: formData
       });
-    }, 1500);
+      const data = await response.json();
+      
+      if (!data.success) {
+        setErrorMsg(data.error || "Analysis failed. Please try again.");
+      } else {
+        // Enforce crop check
+        if (data.crop !== selectedCrop) {
+          setErrorMsg(`Mismatch Detected: You selected '${selectedCrop}', but the AI identified the uploaded leaf as '${data.crop}'. Please upload a valid image for the selected crop or change your selection.`);
+          setAnalyzing(false);
+          return;
+        }
+
+        // Find recommendation
+        let recText = "Consult local agricultural extension for specific treatments.";
+        let orgText = "Maintain field hygiene and proper spacing to reduce spread.";
+        
+        const rec = getRecommendation(data.crop, data.condition);
+        if (rec) {
+            recText = rec.recommended || recText;
+            orgText = rec.prevention || orgText;
+        } else if (data.condition === "Healthy") {
+            recText = "No chemical treatment required.";
+            orgText = "Continue standard care and monitoring.";
+        }
+        
+        setDiagnosis({
+          condition: data.condition === "Healthy" ? "Healthy (No Disease Detected)" : `${data.condition} (${data.crop})`,
+          confidence: data.confidence,
+          severity: data.severity,
+          recommendation: recText,
+          organicSolution: orgText
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg("Failed to reach the classification server.");
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   return (
@@ -52,13 +111,20 @@ export default function CropHealthPage() {
               onChange={e => setSelectedCrop(e.target.value)}
               style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1" }}
             >
-              <option value="Tomato">Tomato</option>
+              <option value="Apple">Apple</option>
+              <option value="Blueberry">Blueberry</option>
+              <option value="Cherry (Including Sour)">Cherry</option>
+              <option value="Corn (Maize)">Corn / Maize</option>
+              <option value="Grape">Grape</option>
+              <option value="Orange">Orange</option>
+              <option value="Peach">Peach</option>
+              <option value="Pepper, Bell">Pepper (Bell)</option>
               <option value="Potato">Potato</option>
-              <option value="Groundnut">Groundnut</option>
-              <option value="Paddy">Paddy / Rice</option>
-              <option value="Cotton">Cotton</option>
-              <option value="Maize">Maize</option>
-              <option value="Onion">Onion</option>
+              <option value="Raspberry">Raspberry</option>
+              <option value="Soybean">Soybean</option>
+              <option value="Squash">Squash</option>
+              <option value="Strawberry">Strawberry</option>
+              <option value="Tomato">Tomato</option>
             </select>
           </div>
 
@@ -98,6 +164,12 @@ export default function CropHealthPage() {
         {/* Diagnosis Results Card */}
         <div className="agri-card">
           <h3 style={{ marginTop: 0 }}>📋 Step 2: Diagnostic Results</h3>
+          {errorMsg && (
+            <div style={{ background: "#fef2f2", color: "#991b1b", padding: "12px", borderRadius: "6px", marginBottom: "15px", border: "1px solid #ef4444" }}>
+              ⚠️ {errorMsg}
+            </div>
+          )}
+          
           {diagnosis ? (
             <div>
               <div style={{ background: "#fef2f2", borderLeft: "4px solid #ef4444", padding: "12px 16px", borderRadius: "6px", marginBottom: "15px" }}>

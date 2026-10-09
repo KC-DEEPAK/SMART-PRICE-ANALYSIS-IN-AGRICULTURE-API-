@@ -1,110 +1,130 @@
-"""
-infer.py — Crop Disease Classifier Inference (38 Classes)
-=========================================================
-Classifies plant diseases from leaf images using EfficientNetV2-S.
-Supports both ONNX Runtime (fast, edge) and PyTorch.
-
-Usage:
-    python infer.py --image sample_leaf.jpg
-    python infer.py --image sample_leaf.jpg --backend pytorch
-"""
-
-import argparse
+import os
 import json
-from pathlib import Path
+import logging
 import numpy as np
 from PIL import Image
+import tensorflow as tf
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Crop Disease Classifier Inference")
-    parser.add_argument("--image", type=str, required=True, help="Path to input leaf image")
-    parser.add_argument("--topk", type=int, default=5, help="Number of top predictions to display")
-    parser.add_argument("--backend", choices=["onnx", "pytorch"], default="onnx", help="Inference backend")
-    parser.add_argument("--onnx-model", type=str, default="efficientnet_v2_s_best.onnx", help="Path to ONNX model")
-    parser.add_argument("--pytorch-model", type=str, default="efficientnet_v2_s_best.pth", help="Path to PyTorch checkpoint")
-    parser.add_argument("--classes", type=str, default="classes.json", help="Path to classes JSON")
-    return parser.parse_args()
+class DiseaseService:
+    _model = None
+    _class_names = []
+    _is_loading = False
 
-def preprocess_image(image_path: str, size: int = 224):
-    img = Image.open(image_path).convert("RGB").resize((size, size), Image.Resampling.BILINEAR)
-    arr = np.array(img, dtype=np.float32) / 255.0
-    mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-    std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
-    arr = (arr - mean) / std
-    arr = np.transpose(arr, (2, 0, 1))  # HWC -> CHW
-    return np.expand_dims(arr, axis=0).astype(np.float32)
+    @classmethod
+    def load_model(cls):
+        if cls._model is not None:
+            return
+            
+        try:
+            cls._is_loading = True
+            model_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'disease', 'best_mobilenetv2_finetuned.keras')
+            class_names_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'disease', 'class_names.json')
+            
+            # Disable OneDNN opts if warning exists
+            os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+            
+            logging.info(f"Loading disease model from {model_path}")
+            cls._model = tf.keras.models.load_model(model_path)
+            
+            with open(class_names_path, 'r') as f:
+                cls._class_names = json.load(f)
+                
+            logging.info(f"Model loaded successfully with {len(cls._class_names)} classes.")
+        except Exception as e:
+            logging.error(f"Error loading disease model: {str(e)}")
+        finally:
+            cls._is_loading = False
 
-def run_onnx(image_tensor: np.ndarray, model_path: str):
-    import onnxruntime as ort
-    session = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
-    input_name = session.get_inputs()[0].name
-    outputs = session.run(None, {input_name: image_tensor})
-    return outputs[0][0]
+    @staticmethod
+    def _is_image_suitable(image: Image.Image) -> bool:
+        """
+        Check if the image is likely a leaf by calculating the ratio of green/brown/yellow pixels.
+        This provides a heuristic to avoid confidently misclassifying unrelated images.
+        """
+        hsv_image = image.convert('HSV')
+        pixels = np.array(hsv_image)
+        
+        # PIL HSV ranges: H=0-255, S=0-255, V=0-255
+        # Green is ~85, Yellow is ~42, Brown is ~15-30
+        h = pixels[:,:,0]
+        s = pixels[:,:,1]
+        v = pixels[:,:,2]
+        
+        # We look for H in [10, 110] covering browns, yellows, and greens.
+        # S should be above 20 to exclude grayscale/white/black.
+        # V should be above 20 to exclude very dark areas.
+        leaf_mask = (h >= 10) & (h <= 110) & (s >= 20) & (v >= 20)
+        
+        leaf_ratio = np.sum(leaf_mask) / (pixels.shape[0] * pixels.shape[1])
+        return leaf_ratio > 0.05
 
-def run_pytorch(image_tensor: np.ndarray, checkpoint_path: str, num_classes: int):
-    import torch
-    import torch.nn as nn
-    from torchvision import models
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = models.efficientnet_v2_s(weights=None)
-    in_features = model.classifier[-1].in_features
-    model.classifier[-1] = nn.Linear(in_features, num_classes)
-    ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
-    state = ckpt["model_state_dict"] if "model_state_dict" in ckpt else ckpt
-    # Clean dropout prefix if any
-    cleaned_state = {}
-    for k, v in state.items():
-        if "classifier.1.1." in k:
-            cleaned_state[k.replace("classifier.1.1.", "classifier.1.")] = v
-        else:
-            cleaned_state[k] = v
-    try:
-        model.load_state_dict(cleaned_state, strict=True)
-    except Exception:
-        model.classifier[-1] = nn.Sequential(nn.Dropout(p=0.0), nn.Linear(in_features, num_classes))
-        model.load_state_dict(state, strict=False)
-    model.to(device).eval()
-    tensor = torch.from_numpy(image_tensor).to(device)
-    with torch.no_grad():
-        out = model(tensor)
-    return out.cpu().numpy()[0]
+    @classmethod
+    def analyze_image(cls, image_path: str):
+        cls.load_model()
+        if cls._model is None:
+            return {"success": False, "error": "AI model failed to load. Please try again later."}
 
-def softmax(x):
-    e = np.exp(x - np.max(x))
-    return e / np.sum(e)
+        try:
+             image = Image.open(image_path).convert("RGB")
+        except Exception as e:
+             return {"success": False, "error": "Invalid or corrupted image format."}
 
-def format_class_name(raw_name: str) -> str:
-    parts = raw_name.split("___")
-    crop = parts[0].replace("_", " ").title()
-    disease = parts[1].replace("_", " ") if len(parts) > 1 else "Healthy"
-    return f"{crop} — {disease}"
+        # Check image suitability for crop diseases
+        if not cls._is_image_suitable(image):
+            return {
+                "success": False,
+                "error": "The image does not appear to be a clear, valid leaf photo. Please upload a clear photo of the crop leaf."
+            }
 
-def main():
-    args = parse_args()
-    with open(args.classes, "r", encoding="utf-8") as f:
-        meta = json.load(f)
-    classes = meta["classes"] if isinstance(meta, dict) and "classes" in meta else meta
+        try:
+            # Preprocess the image for correctly tuned MobileNetV2
+            img = image.resize((224, 224), Image.Resampling.BILINEAR)
+            img_array = np.array(img, dtype=np.float32)
+            
+            # The model was fine-tuned using [0, 1] standardization instead of 
+            # the default Keras MobileNetV2 [-1, 1] preprocess_input scaling.
+            img_array = img_array / 255.0
+            
+            img_array = np.expand_dims(img_array, axis=0)
 
-    tensor = preprocess_image(args.image, meta.get("image_size", 224))
-    print(f"Running inference on {args.image} via {args.backend.upper()}...")
+            # Inference
+            preds = cls._model.predict(img_array, verbose=0)[0]
+            best_idx = np.argmax(preds)
+            best_prob = preds[best_idx]
+            
+            # Certainty check
+            if best_prob < 0.4:
+                return {
+                    "success": False,
+                    "error": "The prediction is uncertain. Please upload a clearer leaf photo."
+                }
 
-    if args.backend == "onnx":
-        logits = run_onnx(tensor, args.onnx_model)
-    else:
-        logits = run_pytorch(tensor, args.pytorch_model, len(classes))
+            raw_name = cls._class_names[best_idx]
+            parts = raw_name.split("___")
+            crop_name = parts[0].replace("_", " ").title()
+            
+            # The second part might contain multiple words like 'Cercospora_leaf_spot Gray_leaf_spot'
+            condition_name = parts[1].replace("_", " ") if len(parts) > 1 else "Healthy"
+            
+            if "healthy" in condition_name.lower():
+                condition_name = "Healthy"
+                severity = "None"
+            else:
+                if best_prob > 0.9:
+                    severity = "High"
+                elif best_prob > 0.7:
+                    severity = "Moderate"
+                else:
+                    severity = "Low"
 
-    probs = softmax(logits)
-    top_indices = np.argsort(probs)[::-1][:args.topk]
-
-    print("\n" + "=" * 65)
-    print(f"  TOP {args.topk} PLANT DISEASE PREDICTIONS")
-    print("=" * 65)
-    for rank, idx in enumerate(top_indices, 1):
-        name = format_class_name(classes[idx])
-        conf = probs[idx] * 100
-        bar = "#" * int(conf / 5)
-        print(f"  {rank}. {name:<40} {conf:5.1f}%  [{bar:<20}]")
-    print("=" * 65)
-
-if __name__ == "__main__":
-    main()
+            return {
+                "success": True,
+                "crop": crop_name,
+                "condition": condition_name,
+                "confidence": f"{best_prob * 100:.1f}%",
+                "severity": severity,
+                "raw_label": raw_name
+            }
+        except Exception as e:
+            logging.error(f"Error predicting disease: {str(e)}")
+            return {"success": False, "error": "An error occurred during analysis."}

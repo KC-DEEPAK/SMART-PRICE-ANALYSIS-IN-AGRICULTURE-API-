@@ -7,6 +7,8 @@ from services.push_service import PushService
 from services.seed_service import SeedService
 from services.user_service import UserService
 from services.crop_price_service import CropPriceCollectorService
+from services.disease_service import DiseaseService
+import os
 
 from datetime import datetime
 
@@ -198,9 +200,42 @@ def get_prices_status():
     status = CropPriceCollectorService.get_collector_status()
     return jsonify(status), 200
 
+# ============================================================
+# CROP DISEASE AI
+# ============================================================
 
+@main_bp.route("/api/disease/analyze", methods=["POST"])
+def analyze_disease():
+    if 'image' not in request.files:
+        return jsonify({"success": False, "error": "No image part in request"}), 400
+    
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({"success": False, "error": "No selected image"}), 400
 
-
+    # Save temp file
+    temp_dir = os.path.join(os.path.dirname(__file__), '..', 'tmp')
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_path = os.path.join(temp_dir, f"temp_{int(datetime.now().timestamp())}_{file.filename}")
+    
+    file.save(temp_path)
+    
+    try:
+        result = DiseaseService.analyze_image(temp_path)
+    except Exception as e:
+        result = {"success": False, "error": str(e)}
+    finally:
+        # Cleanup
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except:
+                pass
+                
+    if not result.get("success"):
+        return jsonify(result), 400
+        
+    return jsonify(result), 200
 
 @main_bp.route("/api/chat", methods=["POST"])
 def chat():
