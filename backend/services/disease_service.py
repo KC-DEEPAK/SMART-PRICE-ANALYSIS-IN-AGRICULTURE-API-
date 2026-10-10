@@ -30,7 +30,7 @@ class DiseaseService:
                 try:
                     cls._is_loading = True
                     cls._load_error = None
-                    model_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'disease', 'best_mobilenetv2_finetuned.keras')
+                    model_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'disease', 'compat_mobilenetv2.keras')
                     class_names_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'disease', 'class_names.json')
                     
                     # Disable OneDNN opts if warning exists
