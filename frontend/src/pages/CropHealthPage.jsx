@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import diseaseFertilizerData from "../data/diseaseFertilizerData";
+import { DISEASE_API_URL } from "../utils/api";
 
 export default function CropHealthPage() {
   const [selectedCrop, setSelectedCrop] = useState("Apple");
@@ -44,8 +45,7 @@ export default function CropHealthPage() {
     formData.append("image", selectedImageFile);
 
     try {
-      const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:5000";
-      const response = await fetch(`${apiUrl}/api/disease/analyze`, {
+      const response = await fetch(DISEASE_API_URL, {
         method: "POST",
         body: formData
       });

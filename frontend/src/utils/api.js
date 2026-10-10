@@ -8,6 +8,9 @@ const BASE_URL =
 export const API_URL = `${BASE_URL}/api/data`;
 export const CHAT_API_URL = `${BASE_URL}/api/chat`;
 
+// Disease Diagnosis Endpoint
+export const DISEASE_API_URL = `${BASE_URL}/api/disease/analyze`;
+
 // Price Alert Endpoints
 export const ALERTS_API_URL = `${BASE_URL}/api/alerts`;
 export const CHECK_ALERTS_API_URL = `${BASE_URL}/api/check-alerts`;
