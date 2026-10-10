@@ -10,7 +10,6 @@ function LandingPage() {
   const navigate = useNavigate();
   const [livePrices, setLivePrices] = useState([]);
   const [loadingPrices, setLoadingPrices] = useState(true);
-  const [topMarket, setTopMarket] = useState(null);
 
   // Fetch real live mandi price data from backend API
   useEffect(() => {
@@ -19,13 +18,6 @@ function LandingPage() {
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
           setLivePrices(data.slice(0, 6)); // Top 6 live records for preview
-          // Find best modal price record
-          const best = data.reduce((max, cur) =>
-            Number(cur.Modal_x0020_Price || 0) > Number(max.Modal_x0020_Price || 0)
-              ? cur
-              : max
-          );
-          setTopMarket(best);
         }
         setLoadingPrices(false);
       })
@@ -195,49 +187,13 @@ function LandingPage() {
         </div>
 
         <div className="center-btn-wrapper">
-          <Link to="/disease-guide" className="view-more-btn">
-            Explore Disease Guide →
+          <Link to="/crop-health" className="view-more-btn">
+            Explore Crop Health →
           </Link>
         </div>
       </section>
 
-      {/* 5. BEST MARKET PREVIEW */}
-      <section className="landing-section">
-        <div className="section-header">
-          <span className="section-tag">MAP INTELLIGENCE</span>
-          <h2>📍 Best Market Recommendation</h2>
-          <p>Identify peak price mandis with interactive map visualizations across India.</p>
-        </div>
 
-        {topMarket && (
-          <div className="best-market-spotlight">
-            <div className="spotlight-header">
-              <span className="spotlight-badge">⭐ TODAY'S HIGHEST VALUE MARKET</span>
-              <h3>{topMarket.Market} APMC ({topMarket.State})</h3>
-            </div>
-            <div className="spotlight-body">
-              <div className="spotlight-stat">
-                <span className="label">Crop</span>
-                <span className="val">{topMarket.Commodity || topMarket.commodity}</span>
-              </div>
-              <div className="spotlight-stat">
-                <span className="label">Modal Price</span>
-                <span className="val highlight-price">₹{topMarket.Modal_x0020_Price} / qtl</span>
-              </div>
-              <div className="spotlight-stat">
-                <span className="label">Recommendation</span>
-                <span className="val sell-tag">SELL NOW</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="center-btn-wrapper">
-          <Link to="/map" className="view-more-btn">
-            Open Interactive Market Map →
-          </Link>
-        </div>
-      </section>
 
       {/* 6. AI FARMING ASSISTANT & VOICE */}
       <section className="landing-section bg-card">
@@ -388,9 +344,6 @@ function LandingPage() {
             <ul className="tier-list">
               <li>✅ Explore Live Mandi Market Prices</li>
               <li>✅ Compare Prices Between Two Crops</li>
-              <li>✅ View Interactive Regional Market Map</li>
-              <li>✅ Read Crop Fertilizer Schedules</li>
-              <li>✅ Read Crop Disease Guides</li>
               <li>✅ Use AI Chatbot for quick queries</li>
             </ul>
           </div>

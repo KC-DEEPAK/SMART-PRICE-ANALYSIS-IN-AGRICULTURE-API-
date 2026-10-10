@@ -16,10 +16,7 @@ import Dashboard from "./pages/Dashboard";
 import ComparisonPage from "./pages/ComparisonPage";
 import PriceListPage from "./pages/PriceListPage";
 import AccountPage from "./pages/AccountPage";
-import FertilizerPage from "./pages/FertilizerPage";
-import DiseaseFertilizerPage from "./pages/DiseaseFertilizerPage";
 import SeasonGuidePage from "./pages/SeasonGuidePage";
-import MapPage from "./pages/MapPage";
 import PriceAlertPage from "./pages/PriceAlertPage";
 import SeedRecommendationPage from "./pages/SeedRecommendationPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
@@ -121,23 +118,8 @@ function App() {
             />
 
             <Route
-              path="/map"
-              element={<MapPage />}
-            />
-
-            <Route
-              path="/fertilizer"
-              element={<FertilizerPage />}
-            />
-
-            <Route
               path="/season-guide"
               element={<SeasonGuidePage />}
-            />
-
-            <Route
-              path="/disease-guide"
-              element={<DiseaseFertilizerPage />}
             />
 
             <Route

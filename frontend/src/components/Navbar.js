@@ -49,17 +49,7 @@ function Navbar() {
           ⚖️ {t.comparison || "Comparison"}
         </NavLink>
 
-        <NavLink to="/map" className="nav-link" onClick={closeMenu}>
-          📍 {t.nearbyMap || "Market Map"}
-        </NavLink>
 
-        <NavLink to="/fertilizer" className="nav-link" onClick={closeMenu}>
-          🌱 {t.fertilizer || "Fertilizer"}
-        </NavLink>
-
-        <NavLink to="/disease-guide" className="nav-link" onClick={closeMenu}>
-          🦠 {t.diseaseGuide || "Disease Guide"}
-        </NavLink>
 
         {/* PROTECTED LINKS (ONLY WHEN SIGNED IN) */}
         <SignedIn>
