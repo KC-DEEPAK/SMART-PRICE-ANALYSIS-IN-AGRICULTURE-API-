@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request
+from werkzeug.utils import secure_filename
 
 from services.api_service import APIService
 from services.alert_service import AlertService
@@ -216,7 +217,12 @@ def analyze_disease():
     # Save temp file
     temp_dir = os.path.join(os.path.dirname(__file__), '..', 'tmp')
     os.makedirs(temp_dir, exist_ok=True)
-    temp_path = os.path.join(temp_dir, f"temp_{int(datetime.now().timestamp())}_{file.filename}")
+    
+    safe_filename = secure_filename(file.filename)
+    if not safe_filename:
+        safe_filename = "image.jpg"
+        
+    temp_path = os.path.join(temp_dir, f"temp_{int(datetime.now().timestamp())}_{safe_filename}")
     
     file.save(temp_path)
     
@@ -233,7 +239,8 @@ def analyze_disease():
                 pass
                 
     if not result.get("success"):
-        return jsonify(result), 400
+        status_code = result.get("status_code", 400)
+        return jsonify(result), status_code
         
     return jsonify(result), 200
 

@@ -3,38 +3,61 @@ import json
 import logging
 import numpy as np
 from PIL import Image
+import threading
 
 class DiseaseService:
     _model = None
     _class_names = []
     _is_loading = False
+    _load_error = None
+    _lock = threading.Lock()
 
     @classmethod
     def load_model(cls):
         if cls._model is not None:
-            return
+            return "LOADED"
             
-        try:
-            cls._is_loading = True
-            model_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'disease', 'best_mobilenetv2_finetuned.keras')
-            class_names_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'disease', 'class_names.json')
+        if cls._is_loading:
+            return "LOADING"
             
-            # Disable OneDNN opts if warning exists
-            os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+        if cls._load_error is not None:
+            err = cls._load_error
+            cls._load_error = None
+            return f"FAILED: {err}"
             
-            import tensorflow as tf
+        if cls._lock.acquire(blocking=False):
+            def _background_load():
+                try:
+                    cls._is_loading = True
+                    cls._load_error = None
+                    model_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'disease', 'best_mobilenetv2_finetuned.keras')
+                    class_names_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'disease', 'class_names.json')
+                    
+                    # Disable OneDNN opts if warning exists
+                    os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+                    
+                    import tensorflow as tf
+                    
+                    logging.info(f"Loading disease model from {model_path}")
+                    cls._model = tf.keras.models.load_model(model_path)
+                    
+                    with open(class_names_path, 'r') as f:
+                        cls._class_names = json.load(f)
+                        
+                    logging.info(f"Model loaded successfully with {len(cls._class_names)} classes.")
+                except Exception as e:
+                    cls._load_error = str(e)
+                    logging.error(f"Error loading disease model: {str(e)}", exc_info=True)
+                finally:
+                    cls._is_loading = False
+                    cls._lock.release()
             
-            logging.info(f"Loading disease model from {model_path}")
-            cls._model = tf.keras.models.load_model(model_path)
+            thread = threading.Thread(target=_background_load)
+            thread.daemon = True
+            thread.start()
+            return "LOADING"
             
-            with open(class_names_path, 'r') as f:
-                cls._class_names = json.load(f)
-                
-            logging.info(f"Model loaded successfully with {len(cls._class_names)} classes.")
-        except Exception as e:
-            logging.error(f"Error loading disease model: {str(e)}")
-        finally:
-            cls._is_loading = False
+        return "LOADING"
 
     @staticmethod
     def _is_image_suitable(image: Image.Image) -> bool:
@@ -61,9 +84,24 @@ class DiseaseService:
 
     @classmethod
     def analyze_image(cls, image_path: str):
-        cls.load_model()
+        status = cls.load_model()
+        
+        if status == "LOADING":
+            return {
+                "success": False, 
+                "error": "AI model is currently warming up on the server. Please wait about 30 seconds and try again.",
+                "status_code": 503
+            }
+        elif status.startswith("FAILED:"):
+            err_details = status.replace("FAILED:", "").strip()
+            return {
+                "success": False, 
+                "error": f"AI model failed to load previously: {err_details}. Please submit again to retry.",
+                "status_code": 500
+            }
+
         if cls._model is None:
-            return {"success": False, "error": "AI model failed to load. Please try again later."}
+            return {"success": False, "error": "AI model failed to load. Please try again later.", "status_code": 500}
 
         try:
              image = Image.open(image_path).convert("RGB")
