@@ -3,7 +3,6 @@ import json
 import logging
 import numpy as np
 from PIL import Image
-import tensorflow as tf
 
 class DiseaseService:
     _model = None
@@ -22,6 +21,8 @@ class DiseaseService:
             
             # Disable OneDNN opts if warning exists
             os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+            
+            import tensorflow as tf
             
             logging.info(f"Loading disease model from {model_path}")
             cls._model = tf.keras.models.load_model(model_path)
