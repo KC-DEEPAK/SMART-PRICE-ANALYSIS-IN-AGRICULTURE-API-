@@ -30,7 +30,7 @@ class DiseaseService:
                 try:
                     cls._is_loading = True
                     cls._load_error = None
-                    model_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'disease', 'compat_mobilenetv2.keras')
+                    model_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'disease', 'compat_mobilenet_savedmodel')
                     class_names_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'disease', 'class_names.json')
                     
                     # Disable OneDNN opts if warning exists
@@ -39,7 +39,32 @@ class DiseaseService:
                     import tensorflow as tf
                     
                     logging.info(f"Loading disease model from {model_path}")
-                    cls._model = tf.keras.models.load_model(model_path)
+                    
+                    # Ensure compatibility between TF 2.15 (Render) and TF 2.16+ (Keras 3 local)
+                    if int(tf.__version__.split('.')[1]) <= 15:
+                        raw_model = tf.saved_model.load(model_path)
+                        class ModelWrapper215:
+                            def predict(self, x, verbose=0):
+                                out = raw_model.serve(x)
+                                if isinstance(out, dict):
+                                    return list(out.values())[0].numpy()
+                                elif hasattr(out, 'numpy'):
+                                    return out.numpy()
+                                else:
+                                    return tf.constant(out).numpy()
+                        cls._model = ModelWrapper215()
+                    else:
+                        layer = tf.keras.layers.TFSMLayer(model_path, call_endpoint='serve')
+                        class ModelWrapper3:
+                            def predict(self, x, verbose=0):
+                                out = layer(x)
+                                if isinstance(out, dict):
+                                    return list(out.values())[0].numpy()
+                                elif hasattr(out, 'numpy'):
+                                    return out.numpy()
+                                else:
+                                    return tf.constant(out).numpy()
+                        cls._model = ModelWrapper3()
                     
                     with open(class_names_path, 'r') as f:
                         cls._class_names = json.load(f)
